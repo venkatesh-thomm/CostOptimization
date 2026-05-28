@@ -10,9 +10,9 @@ module "cost_optimization" {
 
   cpu_idle_threshold = 5
 
-  alarm_period_seconds = 60
+  alarm_period_seconds = 60 # 86400
 
-  evaluation_periods = 1
+  evaluation_periods = 1 # 7
 
   alarm_prefix = "test"
 }

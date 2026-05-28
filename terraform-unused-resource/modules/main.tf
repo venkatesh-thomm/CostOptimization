@@ -98,37 +98,78 @@ resource "aws_cloudwatch_metric_alarm" "ec2_idle" {
 ########################################
 # Unattached EBS Alert
 ########################################
-
 resource "aws_cloudwatch_metric_alarm" "unused_ebs" {
 
   for_each = toset(local.filtered_ebs_volumes)
 
   alarm_name = "${var.alarm_prefix}-unused-ebs-${each.value}"
 
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  comparison_operator = "LessThanThreshold"
 
-  evaluation_periods  = 1
-  datapoints_to_alarm = 1
+  evaluation_periods = var.evaluation_periods
 
-  metric_name = "BurstBalance"
-  namespace   = "AWS/EBS"
+  datapoints_to_alarm = var.evaluation_periods
 
-  statistic = "Average"
-  period    = 86400
+  threshold = 1
 
-  threshold = 0
+  treat_missing_data = "breaching"
 
-  treat_missing_data = "notBreaching"
-
-  alarm_description = "Unattached EBS volume detected"
-
-  dimensions = {
-    VolumeId = each.value
-  }
+  alarm_description = "EBS volume has no read/write activity"
 
   alarm_actions = [
     aws_sns_topic.cost_alerts.arn
   ]
+
+  metric_query {
+
+    id = "total_ops"
+
+    expression = "m1 + m2"
+
+    label = "TotalIOPS"
+
+    return_data = true
+  }
+
+  metric_query {
+
+    id = "m1"
+
+    metric {
+
+      metric_name = "VolumeReadOps"
+
+      namespace = "AWS/EBS"
+
+      period = var.alarm_period_seconds
+
+      stat = "Sum"
+
+      dimensions = {
+        VolumeId = each.value
+      }
+    }
+  }
+
+  metric_query {
+
+    id = "m2"
+
+    metric {
+
+      metric_name = "VolumeWriteOps"
+
+      namespace = "AWS/EBS"
+
+      period = var.alarm_period_seconds
+
+      stat = "Sum"
+
+      dimensions = {
+        VolumeId = each.value
+      }
+    }
+  }
 
   tags = {
     ManagedBy = "Terraform"
